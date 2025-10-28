@@ -61,7 +61,6 @@ func helloPathHandler(w http.ResponseWriter, r *http.Request) {
 
     // 200 OK を返します
 	w.WriteHeader(http.StatusOK) 
-
 }
 
 // User構造体: クライアントから受け取るJSONデータに対応するGoの構造体
@@ -70,16 +69,22 @@ type User struct {
 	Email string `json:"email"`
 }
 
+func userHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. HTTPメソッドの確認
+	if r.Method == http.MethodPost {
+		userCreateHandler(w,r)
+	} else if r.Method == http.MethodPut {
+		userModifyHandler(w,r)
+	} else {
+		w.Header().Set("Allow", http.MethodPut)
+		http.Error(w, `{"error": "Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return		
+	}
+}
+
 // userCreateHandler は新しいユーザーを作成するためのPOSTリクエストを処理します。
 func userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. HTTPメソッドの確認
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, `{"error": "Method Not Allowed"}`, http.StatusMethodNotAllowed)
-		return
-	}
-
-	// 2. リクエストボディの読み取り
+	// 1. リクエストボディの読み取り
 	var newUser User
 	
 	// json.NewDecoderを使ってストリームとして読み取る
@@ -90,7 +95,7 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. データのバリデーションと処理
+	// 2. データのバリデーションと処理
 	if newUser.Name == "" || newUser.Email == "" {
 		http.Error(w, `{"error": "Name and Email are required"}`, http.StatusBadRequest)
 		return
@@ -99,7 +104,7 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 	// ここでデータベースにデータを保存するなどの実際の処理を行います
 	log.Printf("Received new user: Name=%s, Email=%s", newUser.Name, newUser.Email)
 
-	// 4. 成功レスポンスの返却
+	// 3. 成功レスポンスの返却
 	w.Header().Set("Content-Type", "application/json")
 	
 	// 一般的にPOST成功時は 201 Created を返します
@@ -116,14 +121,7 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 func userModifyHandler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
 
-	// 1. HTTPメソッドの確認
-	if r.Method != http.MethodPut {
-		w.Header().Set("Allow", http.MethodPut)
-		http.Error(w, `{"error": "Method Not Allowed"}`, http.StatusMethodNotAllowed)
-		return
-	}
-
-	// 2. リクエストボディの読み取り
+	// 1. リクエストボディの読み取り
 	var newUser User
 	
 	// json.NewDecoderを使ってストリームとして読み取る
@@ -134,7 +132,7 @@ func userModifyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. データのバリデーションと処理
+	// 2. データのバリデーションと処理
 	if newUser.Name == "" || newUser.Email == "" {
 		http.Error(w, `{"error": "Name and Email are required"}`, http.StatusBadRequest)
 		return
@@ -143,7 +141,7 @@ func userModifyHandler(w http.ResponseWriter, r *http.Request) {
 	// ここでデータベースにデータを保存するなどの実際の処理を行います
 	log.Printf("Received modify user: Name=%s, Email=%s", newUser.Name, newUser.Email)
 
-	// 4. 成功レスポンスの返却
+	// 3. 成功レスポンスの返却
 	w.Header().Set("Content-Type", "application/json")
 	
 	// 204 No Content を返す
@@ -161,12 +159,7 @@ func main() {
     mux.HandleFunc("/hello/", helloPathHandler)
 
     // /users エンドポイントに登録ハンドラーを登録
-	mux.HandleFunc("/users", userCreateHandler)
-
-    // /users エンドポイントに更新ハンドラーを登録
-    // STLをだけで実装する場合はHTTPメソッドによって処理を分岐するということはできない。
-    // パスを分けるかcaseなどを使用する必要がある。
-	mux.HandleFunc("/users/modify", userModifyHandler)
+	mux.HandleFunc("/users", userHandler)
 
     log.Println("Server listening on :8080...")
     // サーバーを起動
