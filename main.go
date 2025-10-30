@@ -5,7 +5,7 @@ import (
     "fmt"
     "log"
     "net/http"
-    "strings"
+    // "strings"
 )
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,14 +38,7 @@ func helloPathHandler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
 
     // 1. リクエストからパス全体を取得する
-    path := r.URL.Path
-
-    // 2. パスをスラッシュで分割する
-    // 例: "/hello/john" -> ["", "hello", "john"]
-	segments := strings.Split(path, "/")
-
-    // 3. パラメータ（ID）を抽出する
-	name := segments[2]
+	name := r.PathValue("name")
 
     // 抽出したIDが空でないか、または追加でバリデーションを行う
     if name == "" {
@@ -67,19 +60,6 @@ func helloPathHandler(w http.ResponseWriter, r *http.Request) {
 type User struct {
 	Name  string `json:"name"`
 	Email string `json:"email"`
-}
-
-func userHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. HTTPメソッドの確認
-	if r.Method == http.MethodPost {
-		userCreateHandler(w,r)
-	} else if r.Method == http.MethodPut {
-		userModifyHandler(w,r)
-	} else {
-		w.Header().Set("Allow", http.MethodPut)
-		http.Error(w, `{"error": "Method Not Allowed"}`, http.StatusMethodNotAllowed)
-		return		
-	}
 }
 
 // userCreateHandler は新しいユーザーを作成するためのPOSTリクエストを処理します。
@@ -117,7 +97,7 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// userModifyHandler は /users/{id} の形式のリクエストを処理します。
+// userModifyHandler はユーザーを更新するためのPUTリクエストを処理します。
 func userModifyHandler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
 
@@ -153,13 +133,14 @@ func main() {
     mux := http.NewServeMux()
     
     // hello apiのエンドポイントを追加する
-    mux.HandleFunc("/hello", helloHandler)
+    mux.HandleFunc("GET /hello", helloHandler)
     
     // hello name apiのエンドポイントを追加する
-    mux.HandleFunc("/hello/", helloPathHandler)
+    mux.HandleFunc("/hello/{name}", helloPathHandler)
 
     // /users エンドポイントに登録ハンドラーを登録
-	mux.HandleFunc("/users", userHandler)
+	mux.HandleFunc("POST /users", userCreateHandler)
+	mux.HandleFunc("PUT /users", userModifyHandler)
 
     log.Println("Server listening on :8080...")
     // サーバーを起動
